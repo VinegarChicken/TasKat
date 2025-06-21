@@ -52,21 +52,48 @@ struct ResponsePart {
 }
 
 pub async fn generate_python_script(context: &FileContext, user_prompt: &str, conversation_history: &[String]) -> Result<String> {
+    generate_python_script_internal(context, user_prompt, conversation_history, None).await
+}
+
+pub async fn fix_python_script(context: &FileContext, user_prompt: &str, conversation_history: &[String], original_script: &str, error_details: &str) -> Result<String> {
+    generate_python_script_internal(context, user_prompt, conversation_history, Some((original_script, error_details))).await
+}
+
+// Updated system prompt for better instruction following
+async fn generate_python_script_internal(context: &FileContext, user_prompt: &str, conversation_history: &[String], error_context: Option<(&str, &str)>) -> Result<String> {
     // Get API key from environment variable
     let api_key = std::env::var("GEMINI_API_KEY")
         .context("GEMINI_API_KEY environment variable not set. Please set it with your Google AI Studio API key.")?;
     
     let client = Client::new();
     
-    // Build conversation context
+    // Build conversation context - only include the last 3 exchanges to avoid confusion
     let conversation_context = if conversation_history.is_empty() {
         String::new()
     } else {
-        format!("\nCONVERSATION HISTORY:\n{}\n", conversation_history.join("\n"))
+        let recent_history: Vec<&String> = conversation_history.iter().rev().take(6).collect();
+        let recent_history: Vec<&String> = recent_history.into_iter().rev().collect();
+        format!("\nRECENT CONVERSATION CONTEXT (for reference only):\n{}\n", recent_history.iter().map(|s| s.as_str()).collect::<Vec<&str>>().join("\n"))
+    };
+
+    let error_context_str = if let Some((original_script, error_details)) = error_context {
+        format!(
+            "\nERROR CONTEXT - Fix this script:\n{}\n\nERROR DETAILS:\n{}\n",
+            original_script, error_details
+        )
+    } else {
+        String::new()
     };
 
     let system_prompt = format!(
-        r#"You are an expert Python programmer specializing in file operations. Generate a complete, safe Python script based on the user's request and the provided file context.
+        r#"You are an expert Python programmer specializing in file operations. Generate a complete, safe Python script based ONLY on the current user request.
+
+CRITICAL INSTRUCTION FOLLOWING:
+- Focus ONLY on the current user request - ignore previous requests unless explicitly referenced
+- If user asks for "a PDF", create ONLY a PDF file, not multiple formats
+- If user specifies length (e.g., "2 pages"), ensure the content meets that requirement
+- Don't mix up current request with previous requests or existing files
+- The conversation history is for context only - the current request takes priority
 
 IMPORTANT REQUIREMENTS:
 1. Generate ONLY executable Python code - no explanations, no markdown formatting, no ```python blocks
@@ -79,45 +106,77 @@ IMPORTANT REQUIREMENTS:
 8. Add clear print statements to show what's being done
 9. Use pathlib and os modules for cross-platform compatibility
 10. Handle edge cases like file permissions, existing files, etc.
-11. Consider the conversation history - this request might be related to previous operations
+
+CONTENT GENERATION REQUIREMENTS:
+- If user asks for specific length (e.g., "2 pages"), generate sufficient content to meet that requirement
+- For essays: aim for 300-400 words per page minimum
+- For reports: include proper structure with headings, paragraphs, and conclusions
+- Don't generate placeholder text - create actual meaningful content
+- Use the topic specified by the user, not topics from previous requests
+
+CRITICAL PYTHON 3 COMPATIBILITY:
+- NEVER import 'exceptions' - all standard exceptions are built-in in Python 3
+- Use built-in exceptions directly: Exception, ValueError, TypeError, etc.
+- For Word document operations, use: 'from docx import Document' (the python-docx package)
+- For PDF operations, prefer 'fpdf' or 'reportlab' for direct PDF creation
+- For image operations, use: 'from PIL import Image' (the Pillow package)
+- Always use the correct import statements for modern Python packages
+
+CRITICAL UNICODE HANDLING:
+- Always handle Unicode characters in filenames properly
+- Use repr() or ascii() when printing filenames to avoid encoding issues
+- Instead of: print(f"Moved '{{filename}}' to '{{destination}}'")
+- Use: print(f"Moved {{repr(filename)}} to {{repr(destination)}}")
+- For file operations, pathlib handles Unicode correctly, so prefer Path objects
+
+FILE FORMAT REQUIREMENTS:
+- If user asks for PDF only, create ONLY PDF - don't create intermediate DOCX files
+- Use appropriate libraries: fpdf for simple PDFs, reportlab for complex layouts
+- If creating documents with significant content, ensure proper formatting and length
 
 CRITICAL: Do NOT use input() or any interactive prompts. The script must run completely autonomously.
 
 For file creation, use intelligent naming:
-- If creating a single file, use a descriptive default name based on the request
-- If creating multiple files, use numbered or timestamped names
-- Always check if files exist and handle conflicts automatically (e.g., append numbers)
+- Use descriptive names based on the current request topic
+- Include timestamps to avoid conflicts: filename_YYYYMMDD_HHMMSS.ext
+- Always check if files exist and handle conflicts automatically
 
-Example of safe file creation without input():
+Example for PDF creation:
 ```python
-import os
-from pathlib import Path
+from fpdf import FPDF
 from datetime import datetime
+import os
 
-# Create a new text file with timestamp
+# Change to target directory
+os.chdir(target_directory)
+
+# Create PDF with substantial content
+pdf = FPDF()
+pdf.add_page()
+pdf.set_font('Arial', 'B', 16)
+pdf.cell(0, 10, 'Document Title', ln=True, align='C')
+
+# Add enough content for the requested length
+pdf.set_font('Arial', '', 12)
+for page_num in range(num_pages):
+    if page_num > 0:
+        pdf.add_page()
+    # Add substantial content here - not just placeholder text
+    
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = f"new_file_{{timestamp}}.txt"
-
-# Ensure unique filename
-counter = 1
-while os.path.exists(filename):
-    base_name = f"new_file_{{timestamp}}_{{counter}}"
-    filename = f"{{base_name}}.txt"
-    counter += 1
-
-with open(filename, 'w') as f:
-    f.write("File content here")
-print(f"Created: {{filename}}")
+filename = f"document_{{timestamp}}.pdf"
+pdf.output(filename)
+print(f"Created: {{repr(filename)}}")
 ```
 
-{conversation_context}
+{conversation_context}{error_context_str}
 
-FILE CONTEXT:
+CURRENT FILE CONTEXT (for reference):
 {}
 
-USER REQUEST: {}
+CURRENT USER REQUEST (this takes priority): {}
 
-Generate the Python script now (code only, no other text):"#,
+Generate a Python script that fulfills ONLY the current user request above:"#,
         context.to_string(),
         user_prompt
     );
@@ -129,10 +188,10 @@ Generate the Python script now (code only, no other text):"#,
             }],
         }],
         generation_config: GenerationConfig {
-            temperature: 0.3,
+            temperature: 0.2,  // Lower temperature for more focused responses
             top_k: 40,
             top_p: 0.95,
-            max_output_tokens: 2048,
+            max_output_tokens: 3072,  // Increased for longer content generation
         },
     };
 

@@ -5,6 +5,8 @@ use anyhow::{Result, Context};
 use std::io::{self, Write};
 use regex::Regex;
 use std::collections::HashSet;
+use crate::gemini::validate_script_safety;
+use colored::*;  // Add this import at the top
 
 pub struct ExecutionResult {
     pub success: bool,
@@ -12,8 +14,57 @@ pub struct ExecutionResult {
     pub error: Option<String>,
 }
 
+// In the execute_python_script function:
 pub async fn execute_python_script(script: &str, folder_path: &str, ask_permission: bool) -> Result<ExecutionResult> {
-    // Check if script contains file deletion/modification operations and ask for permission
+    // Step 1: Safety validation with Gemini
+    println!("{}", "🔍 Validating script safety...".blue());
+    match validate_script_safety(script).await {
+        Ok((is_safe, validation_message)) => {
+            // Format the validation message with colors
+            let formatted_message = validation_message
+                .replace("create", &"create".green().to_string())
+                .replace("delete", &"delete".red().to_string())
+                .replace("modify", &"modify".yellow().to_string())
+                .replace("run command", &"run command".magenta().to_string())
+                .replace("SAFE", &"SAFE".green().bold().to_string())
+                .replace("CAUTION", &"CAUTION".red().bold().to_string());
+            
+            println!("{}", formatted_message);
+            
+            let prompt_color = if is_safe { "green" } else { "yellow" };
+            print!("{}", format!("Continue? (yes/no): ").color(prompt_color));
+            io::stdout().flush().unwrap();
+            
+            let mut response = String::new();
+            io::stdin().read_line(&mut response).unwrap();
+            
+            if !response.trim().eq_ignore_ascii_case("yes") {
+                return Ok(ExecutionResult {
+                    success: true,
+                    output: "Script execution cancelled by user after safety review.".to_string(),
+                    error: None,
+                });
+            }
+        },
+        Err(e) => {
+            println!("{}", format!("⚠️ Could not validate script safety: {}", e).yellow());
+            print!("{}", "Continue anyway? (yes/no): ".yellow());
+            io::stdout().flush().unwrap();
+            
+            let mut response = String::new();
+            io::stdin().read_line(&mut response).unwrap();
+            
+            if !response.trim().eq_ignore_ascii_case("yes") {
+                return Ok(ExecutionResult {
+                    success: true,
+                    output: "Script execution cancelled due to safety validation failure.".to_string(),
+                    error: None,
+                });
+            }
+        }
+    }
+
+    // Step 2: Check for file deletion operations (existing permission logic)
     if ask_permission && (script.contains("os.remove") || script.contains("os.unlink") || 
                          script.contains("shutil.rmtree") || script.contains("pathlib") && script.contains(".unlink") ||
                          script.contains("Path(") && script.contains(".unlink")) {

@@ -238,3 +238,85 @@ Generate a Python script that fulfills ONLY the current user request above:"#,
 
     Ok(cleaned_script.trim().to_string())
 }
+
+
+pub async fn validate_script_safety(script: &str) -> Result<(bool, String)> {
+    let system_prompt = format!(
+        r#"You are a Python safety and assistant validation module.
+
+Your job is to review a Python script and describe what it will do — clearly, calmly, and in friendly language. The script will be run on the user's local machine using a tool called PromptFile.
+
+Please:
+- Show what the script will do using bullet points
+- If the script creates, deletes, or modifies files or folders, just describe it normally — no warnings needed
+- If the script does anything unusual (like running shell commands, installing packages, or accessing the registry), explain it gently and let the user decide
+- Only use words like "dangerous" or "security warning" if the script does something truly harmful (like deleting system folders or shutting down the computer)
+
+End your response with:
+**"✅ All clear. Proceed?"**
+or
+**"⚠️ This script includes sensitive system operations. Are you sure you want to continue?"**
+
+### Script to Review:
+```python
+{}
+```"#,
+        script
+    );
+
+    let request = GeminiRequest {
+        contents: vec![Content {
+            parts: vec![Part {
+                text: system_prompt,
+            }],
+        }],
+        generation_config: GenerationConfig {
+            temperature: 0.1,  // Very low temperature for consistent safety analysis
+            top_k: 40,
+            top_p: 0.95,
+            max_output_tokens: 1024,
+        },
+    };
+
+    // Get API key from environment
+    let api_key = std::env::var("GEMINI_API_KEY")
+        .context("GEMINI_API_KEY environment variable not set")?;
+
+    let client = Client::new();
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}",
+        api_key
+    );
+
+    let response = client
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .json(&request)
+        .send()
+        .await
+        .context("Failed to send request to Gemini API")?;
+
+    if !response.status().is_success() {
+        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(anyhow::anyhow!("Gemini API error: {}", error_text));
+    }
+
+    let gemini_response: GeminiResponse = response
+        .json()
+        .await
+        .context("Failed to parse Gemini API response")?;
+
+    let validation_text = gemini_response
+        .candidates
+        .first()
+        .and_then(|c| c.content.parts.first())
+        .map(|p| p.text.clone())
+        .context("No response from Gemini API")?
+        .trim()
+        .to_string();
+    
+    // Check if Gemini marked it as safe or requiring caution
+    let is_safe = validation_text.contains("✅ All clear. Proceed?");
+    
+    Ok((is_safe, validation_text))
+}

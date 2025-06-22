@@ -2,7 +2,7 @@ use std::process::{Command, Stdio};
 use std::fs;
 use tempfile::NamedTempFile;
 use anyhow::{Result, Context};
-use std::io::Write;
+use std::io::{self, Write};
 use regex::Regex;
 use std::collections::HashSet;
 
@@ -12,7 +12,26 @@ pub struct ExecutionResult {
     pub error: Option<String>,
 }
 
-pub async fn execute_python_script(script: &str, folder_path: &str) -> Result<ExecutionResult> {
+pub async fn execute_python_script(script: &str, folder_path: &str, ask_permission: bool) -> Result<ExecutionResult> {
+    // Check if script contains file deletion/modification operations and ask for permission
+    if ask_permission && (script.contains("os.remove") || script.contains("os.unlink") || 
+                         script.contains("shutil.rmtree") || script.contains("pathlib") && script.contains(".unlink") ||
+                         script.contains("Path(") && script.contains(".unlink")) {
+        print!("This script will delete or modify files. Do you want to continue? (yes/no): ");
+        io::stdout().flush().unwrap();
+        
+        let mut response = String::new();
+        io::stdin().read_line(&mut response).unwrap();
+        
+        if !response.trim().eq_ignore_ascii_case("yes") {
+            return Ok(ExecutionResult {
+                success: true,
+                output: "Operation cancelled by user.".to_string(),
+                error: None,
+            });
+        }
+    }
+
     // First, check and install required modules
     let required_modules = extract_import_modules(script);
     if !required_modules.is_empty() {

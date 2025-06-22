@@ -51,16 +51,16 @@ struct ResponsePart {
     text: String,
 }
 
-pub async fn generate_python_script(context: &FileContext, user_prompt: &str, conversation_history: &[String]) -> Result<String> {
-    generate_python_script_internal(context, user_prompt, conversation_history, None).await
+pub async fn generate_python_script(context: &FileContext, user_prompt: &str, conversation_history: &[String], ask_permission: bool) -> Result<String> {
+    generate_python_script_internal(context, user_prompt, conversation_history, None, ask_permission).await
 }
 
-pub async fn fix_python_script(context: &FileContext, user_prompt: &str, conversation_history: &[String], original_script: &str, error_details: &str) -> Result<String> {
-    generate_python_script_internal(context, user_prompt, conversation_history, Some((original_script, error_details))).await
+pub async fn fix_python_script(context: &FileContext, user_prompt: &str, conversation_history: &[String], original_script: &str, error_details: &str, ask_permission: bool) -> Result<String> {
+    generate_python_script_internal(context, user_prompt, conversation_history, Some((original_script, error_details)), ask_permission).await
 }
 
 // Updated system prompt for better instruction following
-async fn generate_python_script_internal(context: &FileContext, user_prompt: &str, conversation_history: &[String], error_context: Option<(&str, &str)>) -> Result<String> {
+async fn generate_python_script_internal(context: &FileContext, user_prompt: &str, conversation_history: &[String], error_context: Option<(&str, &str)>, ask_permission: bool) -> Result<String> {
     // Get API key from environment variable
     let api_key = std::env::var("GEMINI_API_KEY")
         .context("GEMINI_API_KEY environment variable not set. Please set it with your Google AI Studio API key.")?;
@@ -90,7 +90,8 @@ async fn generate_python_script_internal(context: &FileContext, user_prompt: &st
 
 CRITICAL INSTRUCTION FOLLOWING:
 - Focus ONLY on the current user request - ignore previous requests unless explicitly referenced
-- If user asks for "a PDF", create ONLY a PDF file, not multiple formats
+- If user specifies a file type (PDF, DOCX, etc.), create ONLY that file type
+- If NO file type is specified, default to creating a TEXT file (.txt)
 - If user specifies length (e.g., "2 pages"), ensure the content meets that requirement
 - Don't mix up current request with previous requests or existing files
 - The conversation history is for context only - the current request takes priority
@@ -101,11 +102,11 @@ IMPORTANT REQUIREMENTS:
 3. Use os.chdir() at the start to change to the target directory
 4. Include proper error handling with try/catch blocks
 5. NEVER use input() for user interaction - the script runs non-interactively
-6. For operations that might be destructive, add safety checks and warnings instead of prompts
-7. Use intelligent defaults and safe assumptions rather than asking for user input
-8. Add clear print statements to show what's being done
-9. Use pathlib and os modules for cross-platform compatibility
-10. Handle edge cases like file permissions, existing files, etc.
+
+FILE OPERATION SAFETY:
+- For operations that might DELETE or OVERWRITE files: {}
+- Always create backup copies of files before modifying them
+- Use descriptive variable names and add comments for clarity
 
 CONTENT GENERATION REQUIREMENTS:
 - If user asks for specific length (e.g., "2 pages"), generate sufficient content to meet that requirement
@@ -125,13 +126,13 @@ CRITICAL PYTHON 3 COMPATIBILITY:
 CRITICAL UNICODE HANDLING:
 - Always handle Unicode characters in filenames properly
 - Use repr() or ascii() when printing filenames to avoid encoding issues
-- Instead of: print(f"Moved '{{filename}}' to '{{destination}}'")
-- Use: print(f"Moved {{repr(filename)}} to {{repr(destination)}}")
+- Instead of: print(f"Moved '{{{{filename}}}}' to '{{{{destination}}}}'")
+- Use: print(f"Moved {{{{repr(filename)}}}} to {{{{repr(destination)}}}}")
 - For file operations, pathlib handles Unicode correctly, so prefer Path objects
 
 FILE FORMAT REQUIREMENTS:
-- If user asks for PDF only, create ONLY PDF - don't create intermediate DOCX files
-- Use appropriate libraries: fpdf for simple PDFs, reportlab for complex layouts
+- If no file type is specified, default to creating a TEXT file (.txt)
+- Use appropriate libraries for specific file types when requested
 - If creating documents with significant content, ensure proper formatting and length
 
 CRITICAL: Do NOT use input() or any interactive prompts. The script must run completely autonomously.
@@ -141,32 +142,30 @@ For file creation, use intelligent naming:
 - Include timestamps to avoid conflicts: filename_YYYYMMDD_HHMMSS.ext
 - Always check if files exist and handle conflicts automatically
 
-Example for PDF creation:
+Example for text file creation:
 ```python
-from fpdf import FPDF
 from datetime import datetime
 import os
+from pathlib import Path
 
 # Change to target directory
 os.chdir(target_directory)
 
-# Create PDF with substantial content
-pdf = FPDF()
-pdf.add_page()
-pdf.set_font('Arial', 'B', 16)
-pdf.cell(0, 10, 'Document Title', ln=True, align='C')
-
-# Add enough content for the requested length
-pdf.set_font('Arial', '', 12)
-for page_num in range(num_pages):
-    if page_num > 0:
-        pdf.add_page()
-    # Add substantial content here - not just placeholder text
-    
+# Create text file with substantial content
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = f"document_{{timestamp}}.pdf"
-pdf.output(filename)
-print(f"Created: {{repr(filename)}}")
+filename = f"document_{{{{timestamp}}}}.txt"
+
+# Check if file exists
+if Path(filename).exists():
+    print(f"File {{{{repr(filename)}}}} already exists. Creating with timestamp to avoid overwrite.")
+
+# Write content
+with open(filename, 'w', encoding='utf-8') as f:
+    f.write("Document Title\n\n")
+    f.write("This is the content of the document.\n")
+    # Add more substantial content here
+    
+print(f"Created: {{{{repr(filename)}}}}")
 ```
 
 {conversation_context}{error_context_str}
@@ -177,9 +176,14 @@ CURRENT FILE CONTEXT (for reference):
 CURRENT USER REQUEST (this takes priority): {}
 
 Generate a Python script that fulfills ONLY the current user request above:"#,
-        context.to_string(),
-        user_prompt
-    );
+    if ask_permission {
+        "proceed with file operations (permission will be handled by the system)"
+    } else {
+        "proceed without asking for permission"
+    },
+    context.to_string(),
+    user_prompt
+);
 
     let request = GeminiRequest {
         contents: vec![Content {

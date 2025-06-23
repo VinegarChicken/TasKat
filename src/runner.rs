@@ -32,13 +32,13 @@ pub async fn execute_python_script(script: &str, folder_path: &str, ask_permissi
             println!("{}", formatted_message);
             
             let prompt_color = if is_safe { "green" } else { "yellow" };
-            print!("{}", format!("Continue? (yes/no): ").color(prompt_color));
+            print!("{}", format!("Continue? (yes/y/no/n): ").color(prompt_color));
             io::stdout().flush().unwrap();
             
             let mut response = String::new();
             io::stdin().read_line(&mut response).unwrap();
             
-            if !response.trim().eq_ignore_ascii_case("yes") {
+            if !(response.trim().eq_ignore_ascii_case("yes") || response.trim().eq_ignore_ascii_case("y")) {
                 return Ok(ExecutionResult {
                     success: true,
                     output: "Script execution cancelled by user after safety review.".to_string(),
@@ -48,13 +48,13 @@ pub async fn execute_python_script(script: &str, folder_path: &str, ask_permissi
         },
         Err(e) => {
             println!("{}", format!("⚠️ Could not validate script safety: {}", e).yellow());
-            print!("{}", "Continue anyway? (yes/no): ".yellow());
+            print!("{}", "Continue anyway? (yes/y/no/n): ".yellow());
             io::stdout().flush().unwrap();
             
             let mut response = String::new();
             io::stdin().read_line(&mut response).unwrap();
             
-            if !response.trim().eq_ignore_ascii_case("yes") {
+            if !(response.trim().eq_ignore_ascii_case("yes") || response.trim().eq_ignore_ascii_case("y")) {
                 return Ok(ExecutionResult {
                     success: true,
                     output: "Script execution cancelled due to safety validation failure.".to_string(),
@@ -101,31 +101,41 @@ pub async fn execute_python_script(script: &str, folder_path: &str, ask_permissi
         .context("Failed to create temporary file")?;
     
     // Write the script with folder path change at the beginning and Unicode handling
+    // In the full_script format string, improve the directory change handling:
     let full_script = format!(
-        r#"import os
+    r#"import os
 import sys
-from pathlib import Path
+import subprocess
+import codecs
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
-# Fix Unicode encoding issues on Windows
-if os.name == 'nt':  # Windows
-    import codecs
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-
-# Change to target directory
+# Change to target directory with better error handling
 target_dir = r"{}"
+print(f"🎯 Attempting to change to directory: {{target_dir}}")
 try:
+    # For Windows cross-drive compatibility, change drive first if needed
+    import pathlib
+    target_path = pathlib.Path(target_dir)
+    if target_path.is_absolute() and target_path.drive:
+        print(f"🔄 Changing to drive: {{target_path.drive}}")
+        os.chdir(target_path.drive + os.sep)
+    
     os.chdir(target_dir)
-    print(f"Working in: {{os.getcwd()}}")
+    current_dir = os.getcwd()
+    print(f"✅ Successfully changed to: {{current_dir}}")
 except Exception as e:
-    print(f"Error changing to directory: {{e}}")
+    print(f"❌ Error changing to directory: {{e}}")
+    print(f"🔍 Current directory: {{os.getcwd()}}")
+    print(f"📂 Target directory exists: {{os.path.exists(target_dir)}}")
+    print(f"📁 Target is directory: {{os.path.isdir(target_dir)}}")
     sys.exit(1)
 
 # User's generated script
 {}
 "#,
-        folder_path, script
-    );
+    folder_path, script
+);
     
     temp_file.write_all(full_script.as_bytes())
         .context("Failed to write script to temporary file")?;
@@ -137,9 +147,10 @@ except Exception as e:
     let mut last_error = None;
     
     for python_cmd in &python_commands {
+        println!("🐍 Trying Python command: {}", python_cmd);
+        
         let mut cmd = Command::new(python_cmd);
         cmd.arg(temp_path)
-            .current_dir(folder_path)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -147,6 +158,12 @@ except Exception as e:
         // Set UTF-8 environment variables for better Unicode handling
         cmd.env("PYTHONIOENCODING", "utf-8");
         cmd.env("PYTHONUTF8", "1");
+        
+        // Don't set current_dir here - let Python handle the directory change
+        // This avoids Windows cross-drive issues at the Rust level
+        
+        println!("📁 Target directory: {}", folder_path);
+        println!("🔧 Executing Python script...");
         
         let output = cmd.output();
             

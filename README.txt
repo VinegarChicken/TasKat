@@ -20,7 +20,10 @@ Copy Your Key: Your new Gemini API key will be generated and displayed. Immediat
 You can also watch this video to guide you https://youtu.be/o8iyrtQyrZM
 
 Run TasKat, and when prompted, paste in your license, and paste in your api key. Thats all ! You wont need to do it again, unless you uninstall
-the app and choose the option to remove both the license and api key from your computer. Enjoy !
+the app and choose the option to remove both the license and api key from your computer.
+Now right click, press show more options, then open TasKat and Enjoy !
+
+For the quick command functionality, open TasKat and type "#help"
 
 If you need further help installing this, or you encounter any bugs then feel free to contact me at miloaugusteiii@outlook.com or vinegarchickenn@gmail.com.
 Thank you for downloading TasKat!

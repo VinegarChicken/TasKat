@@ -42,12 +42,13 @@ pub fn setup_registry() -> Result<()> {
     
     TasKat_key.set_value("Icon", &icon_to_use)
         .context("Failed to set TasKat icon")?;
-    
+    //Make 100 jpg, 100 png, 100 txt, 100 pdf, 100 docx, 100 mp3, 100 ogg, and make each one have a random, unique filename that doesnt follow a specific pattern or have a similar name
     // Create the command subkey
     let (command_key, _) = TasKat_key.create_subkey("command")
         .context("Failed to create command key")?;
     
     // Set the command value with the full path to the executable
+    // Remove the cd /d command since TasKat handles directory changes internally
     let command_value = format!("\"{}\" prompt \"%1\"", exe_path_str);
     command_key.set_value("", &command_value)
         .context("Failed to set command value")?;
@@ -64,7 +65,7 @@ pub fn setup_registry() -> Result<()> {
         .context("Failed to create Directory\\Background TasKat key")?;
     
     // Set the display name
-    bg_TasKat_key.set_value("", &"TasKat Command")
+    bg_TasKat_key.set_value("", &"TasKat")
         .context("Failed to set Directory\\Background TasKat display name")?;
         
     // Set the icon to use TasKat.ico if it exists, otherwise fall back to executable icon
@@ -76,6 +77,7 @@ pub fn setup_registry() -> Result<()> {
         .context("Failed to create Directory\\Background command key")?;
     
     // Set the command value - %V gives the current directory
+    // Remove the cd /d command since TasKat handles directory changes internally
     let bg_command_value = format!("\"{}\" prompt \"%V\"", exe_path_str);
     bg_command_key.set_value("", &bg_command_value)
         .context("Failed to set Directory\\Background command value")?;

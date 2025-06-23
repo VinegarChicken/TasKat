@@ -71,9 +71,27 @@ async fn main() -> anyhow::Result<()> {
 // Updated run_prompt_mode function to ask for permission preference
 async fn run_prompt_mode(folder_path: &str) -> anyhow::Result<()> {
     let path = Path::new(folder_path);
-    if !path.exists() || !path.is_dir() {
-        println!("{}", "❌ Invalid folder path".red());
+    
+    // Add more detailed path validation with better error messages
+    if !path.exists() {
+        println!("{}", format!("❌ Folder path does not exist: {}", folder_path).red());
         return Ok(());
+    }
+    
+    if !path.is_dir() {
+        println!("{}", format!("❌ Path is not a directory: {}", folder_path).red());
+        return Ok(());
+    }
+    
+    // Test if we can actually access the directory
+    match std::fs::read_dir(folder_path) {
+        Ok(_) => {
+            println!("{}", format!("✅ Successfully accessed directory: {}", folder_path).green());
+        }
+        Err(e) => {
+            println!("{}", format!("❌ Cannot access directory {}: {}", folder_path, e).red());
+            return Ok(());
+        }
     }
 
     println!("{}", "TasKat".cyan().bold());

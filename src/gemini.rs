@@ -99,9 +99,10 @@ CRITICAL INSTRUCTION FOLLOWING:
 IMPORTANT REQUIREMENTS:
 1. Generate ONLY executable Python code - no explanations, no markdown formatting, no ```python blocks
 2. The script will be executed directly in the target folder
-3. Use os.chdir() at the start to change to the target directory
-4. Include proper error handling with try/catch blocks
-5. NEVER use input() for user interaction - the script runs non-interactively
+3. DO NOT include os.chdir() or directory validation - TasKat handles directory changes automatically
+4. DO NOT check if directories exist - assume you're already in the correct working directory
+5. Include proper error handling with try/catch blocks for file operations only
+6. NEVER use input() for user interaction - the script runs non-interactively
 
 FILE OPERATION SAFETY:
 - For operations that might DELETE or OVERWRITE files: {}

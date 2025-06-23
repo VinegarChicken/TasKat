@@ -1,7 +1,8 @@
 [package]
-name = "promptfile"
+name = "TasKat"
 version = "0.1.0"
 edition = "2021"
+authors = ["Milo Auguste III"]
 
 [dependencies]
 anyhow = "1.0"

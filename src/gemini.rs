@@ -244,7 +244,7 @@ pub async fn validate_script_safety(script: &str) -> Result<(bool, String)> {
     let system_prompt = format!(
         r#"You are a Python safety and assistant validation module.
 
-Your job is to review a Python script and describe what it will do — clearly, calmly, and in friendly language. The script will be run on the user's local machine using a tool called PromptFile.
+Your job is to review a Python script and describe what it will do — clearly, calmly, and in friendly language. The script will be run on the user's local machine using a tool called TasKat.
 
 Please:
 - Show what the script will do using bullet points

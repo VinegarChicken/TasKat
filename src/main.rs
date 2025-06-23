@@ -18,7 +18,7 @@ use commands::{CommandRegistry, get_config_path, is_command, extract_command_nam
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let matches = Command::new("PromptFile")
+    let matches = Command::new("TasKat")
         .version("1.0")
         .about("AI-powered file operations via right-click context menu")
         .subcommand(
@@ -44,13 +44,13 @@ async fn main() -> anyhow::Result<()> {
     match matches.subcommand() {
         Some(("install", _)) => {
             setup_registry()?;
-            println!("{}", "✅ PromptFile context menu installed! Right-click anywhere in File Explorer to use it.".green());
+            println!("{}", "✅ TasKat context menu installed! Right-click anywhere in File Explorer to use it.".green());
         }
         Some(("uninstall", _)) => {
             uninstall_registry()?;
-            println!("{}", "✅ PromptFile context menu removed successfully.".green());
+            println!("{}", "✅ TasKat context menu removed successfully.".green());
             println!("{}", "If you ran into any issues or problems, be sure to contact the developer!".yellow());
-            println!("{}", "Thank you for using PromptFile 🫡".blue());
+            println!("{}", "Thank you for using TasKat 🫡".blue());
         }
         Some(("prompt", sub_matches)) => {
             let folder_path = sub_matches.get_one::<String>("folder").unwrap();
@@ -74,7 +74,7 @@ async fn run_prompt_mode(folder_path: &str) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    println!("{}", "PromptFile".cyan().bold());
+    println!("{}", "TasKat".cyan().bold());
     println!("{}", "==========".cyan());
     println!("{} {}", "Selected Folder:".white(), folder_path.yellow());
     println!();
@@ -343,19 +343,19 @@ async fn handle_no_arguments() -> anyhow::Result<()> {
         }
     }
     
-    println!("PromptFile");
+    println!("TasKat");
     println!("==========");
     println!();
     
     // Reminder about right-click usage
-    println!("Reminder: Right-click in any folder in File Explorer to use PromptFile!");
+    println!("Reminder: Right-click in any folder in File Explorer to use TasKat!");
     println!();
     
     // Check installation status
     let installed = is_installed();
     
     if installed {
-        println!("PromptFile is already installed.");
+        println!("TasKat is already installed.");
         print!("Would you like to uninstall? (yes/no): ");
         io::stdout().flush()?;
         
@@ -364,9 +364,9 @@ async fn handle_no_arguments() -> anyhow::Result<()> {
         
         if response.trim().eq_ignore_ascii_case("yes") {
             uninstall_registry()?;
-            println!("PromptFile context menu removed successfully.");
+            println!("TasKat context menu removed successfully.");
             println!("If you ran into any issues or problems, be sure to contact the developer!");
-            println!("Thank you for using PromptFile !");
+            println!("Thank you for using TasKat !");
             println!();
             println!("You may now close this window.");
             println!("Press Enter to exit...");
@@ -376,7 +376,7 @@ async fn handle_no_arguments() -> anyhow::Result<()> {
             println!("Installation unchanged.");
         }
     } else {
-        println!("PromptFile currently isn't installed.");
+        println!("TasKat currently isn't installed.");
         print!("Would you like to install? (yes/no): ");
         io::stdout().flush()?;
         
@@ -385,7 +385,7 @@ async fn handle_no_arguments() -> anyhow::Result<()> {
         
         if response.trim().eq_ignore_ascii_case("yes") {
             setup_registry()?;
-            println!("✅ PromptFile context menu installed! Right-click anywhere in File Explorer to use it.");
+            println!("✅ TasKat context menu installed! Right-click anywhere in File Explorer to use it.");
             println!();
             println!("You may now close this window.");
             println!("Press Enter to exit...");
@@ -398,9 +398,9 @@ async fn handle_no_arguments() -> anyhow::Result<()> {
     
     println!();
     println!("Available commands:");
-    println!("  promptfile install - Install right-click context menu");
-    println!("  promptfile uninstall - Remove right-click context menu");
-    println!("  promptfile prompt <folder> - Run directly on a folder");
+    println!("  taskat install - Install right-click context menu");
+    println!("  taskat uninstall - Remove right-click context menu");
+    println!("  taskat prompt <folder> - Run directly on a folder");
     
     Ok(())
 }

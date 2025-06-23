@@ -68,13 +68,19 @@ pub async fn execute_python_script(script: &str, folder_path: &str, ask_permissi
     if ask_permission && (script.contains("os.remove") || script.contains("os.unlink") || 
                          script.contains("shutil.rmtree") || script.contains("pathlib") && script.contains(".unlink") ||
                          script.contains("Path(") && script.contains(".unlink")) {
-        print!("This script will delete or modify files. Do you want to continue? (yes/no): ");
+        print!("This script will delete or modify files. Do you want to continue? (yes/y/no/n): ");
         io::stdout().flush().unwrap();
         
         let mut response = String::new();
         io::stdin().read_line(&mut response).unwrap();
         
-        if !response.trim().eq_ignore_ascii_case("yes") {
+        print!("{}", "Continue with execution? (yes/y/no/n): ".yellow());
+        io::stdout().flush().unwrap();
+        
+        let mut response = String::new();
+        io::stdin().read_line(&mut response).unwrap();
+        
+        if !(response.trim().eq_ignore_ascii_case("yes") || response.trim().eq_ignore_ascii_case("y")) {
             return Ok(ExecutionResult {
                 success: true,
                 output: "Operation cancelled by user.".to_string(),

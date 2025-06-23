@@ -4,6 +4,16 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Milo Auguste III"]
 
+[package.metadata.winres]
+OriginalFilename = "TasKat.exe"
+LegalCopyright = "Copyright (c) Milo Auguste III"
+ProductName = "TasKat"
+FileDescription = "AI-powered file operations via right-click context menu"
+ProductVersion = "0.1"
+FileVersion = "0.1"
+CompanyName = "Milo Auguste III"
+icon = "TasKat.ico"
+
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
@@ -18,3 +28,6 @@ winreg = "0.10"
 regex = "1.0"
 chrono = "0.4"
 dirs = "5.0"
+
+[build-dependencies]
+winres = "0.1"

@@ -99,3 +99,18 @@ pub fn uninstall_registry() -> Result<()> {
     
     Ok(())
 }
+
+pub fn is_installed() -> bool {
+    let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
+    
+    // Check if the PromptFile key exists in Directory\shell
+    if let Ok(directory_key) = hkcr.open_subkey_with_flags("Directory", KEY_READ) {
+        if let Ok(shell_key) = directory_key.open_subkey_with_flags("shell", KEY_READ) {
+            if shell_key.open_subkey("PromptFile").is_ok() {
+                return true;
+            }
+        }
+    }
+    
+    false
+}

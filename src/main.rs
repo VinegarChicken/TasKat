@@ -2,6 +2,7 @@ use clap::{Arg, Command};
 use colored::*;
 use std::io::{self, Write};
 use std::path::Path;
+use std::env;
 
 mod context;
 mod gemini;
@@ -11,7 +12,7 @@ mod commands; // Add the new module
 
 use context::gather_file_context;
 use gemini::{generate_python_script, fix_python_script};
-use registry::{setup_registry, uninstall_registry};
+use registry::{setup_registry, uninstall_registry, is_installed};
 use runner::{execute_python_script, is_recoverable_error, extract_error_details};
 use commands::{CommandRegistry, get_config_path, is_command, extract_command_name, display_help};
 
@@ -48,16 +49,16 @@ async fn main() -> anyhow::Result<()> {
         Some(("uninstall", _)) => {
             uninstall_registry()?;
             println!("{}", "✅ PromptFile context menu removed successfully.".green());
+            println!("{}", "If you ran into any issues or problems, be sure to contact the developer!".yellow());
+            println!("{}", "Thank you for using PromptFile 🫡".blue());
         }
         Some(("prompt", sub_matches)) => {
             let folder_path = sub_matches.get_one::<String>("folder").unwrap();
             run_prompt_mode(folder_path).await?;
         }
         _ => {
-            println!("{}", "Available commands:".yellow());
-            println!("  {} - Install right-click context menu", "promptfile install".cyan());
-            println!("  {} - Remove right-click context menu", "promptfile uninstall".cyan());
-            println!("  {} - Run directly on a folder", "promptfile prompt <folder>".cyan());
+            // Handle no arguments - check installation status and prompt user
+            handle_no_arguments().await?;
         }
     }
 
@@ -312,5 +313,106 @@ async fn execute_script_with_retry(
                 return Err(anyhow::anyhow!("Execution system error: {}", e));
             }
         }
+    }
+}
+
+// Add this new function to handle no arguments
+async fn handle_no_arguments() -> anyhow::Result<()> {
+    // Check if running as administrator, if not, elevate
+    if !is_elevated() {
+        println!("Administrator privileges required for registry operations.");
+        println!("Restarting with elevated privileges...");
+        
+        let exe_path = env::current_exe()?;
+        let status = std::process::Command::new("powershell")
+            .args([
+                "-Command",
+                &format!("Start-Process '{}' -Verb RunAs", exe_path.display())
+            ])
+            .status();
+            
+        match status {
+            Ok(_) => {
+                println!("Please check the new elevated window.");
+                return Ok(());
+            }
+            Err(e) => {
+                println!("Failed to elevate privileges: {}", e);
+                println!("Please run as administrator manually.");
+            }
+        }
+    }
+    
+    println!("PromptFile");
+    println!("==========");
+    println!();
+    
+    // Reminder about right-click usage
+    println!("Reminder: Right-click in any folder in File Explorer to use PromptFile!");
+    println!();
+    
+    // Check installation status
+    let installed = is_installed();
+    
+    if installed {
+        println!("PromptFile is already installed.");
+        print!("Would you like to uninstall? (yes/no): ");
+        io::stdout().flush()?;
+        
+        let mut response = String::new();
+        io::stdin().read_line(&mut response)?;
+        
+        if response.trim().eq_ignore_ascii_case("yes") {
+            uninstall_registry()?;
+            println!("PromptFile context menu removed successfully.");
+            println!("If you ran into any issues or problems, be sure to contact the developer!");
+            println!("Thank you for using PromptFile !");
+            println!();
+            println!("You may now close this window.");
+            println!("Press Enter to exit...");
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+        } else {
+            println!("Installation unchanged.");
+        }
+    } else {
+        println!("PromptFile currently isn't installed.");
+        print!("Would you like to install? (yes/no): ");
+        io::stdout().flush()?;
+        
+        let mut response = String::new();
+        io::stdin().read_line(&mut response)?;
+        
+        if response.trim().eq_ignore_ascii_case("yes") {
+            setup_registry()?;
+            println!("✅ PromptFile context menu installed! Right-click anywhere in File Explorer to use it.");
+            println!();
+            println!("You may now close this window.");
+            println!("Press Enter to exit...");
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+        } else {
+            println!("Installation skipped.");
+        }
+    }
+    
+    println!();
+    println!("Available commands:");
+    println!("  promptfile install - Install right-click context menu");
+    println!("  promptfile uninstall - Remove right-click context menu");
+    println!("  promptfile prompt <folder> - Run directly on a folder");
+    
+    Ok(())
+}
+
+// Add this helper function to check if running as administrator
+fn is_elevated() -> bool {
+    let output = std::process::Command::new("net")
+        .args(["session"])
+        .output();
+        
+    match output {
+        Ok(result) => result.status.success(),
+        Err(_) => false,
     }
 }

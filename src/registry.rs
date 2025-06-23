@@ -2,6 +2,7 @@ use std::env;
 use winreg::enums::*;
 use winreg::RegKey;
 use anyhow::{Result, Context};
+use std::path::Path;
 
 pub fn setup_registry() -> Result<()> {
     let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
@@ -10,6 +11,12 @@ pub fn setup_registry() -> Result<()> {
     let exe_path = env::current_exe()
         .context("Failed to get current executable path")?;
     let exe_path_str = exe_path.to_string_lossy().to_string();
+    
+    // Get the icon path (TasKat.ico in the same directory as the executable)
+    let exe_dir = exe_path.parent()
+        .context("Failed to get executable directory")?;
+    let icon_path = exe_dir.join("TasKat.ico");
+    let icon_path_str = icon_path.to_string_lossy().to_string();
     
     // Create the registry path for Directory context menu: HKEY_CLASSES_ROOT\Directory\shell\TasKat
     let directory_key = hkcr.open_subkey_with_flags("Directory", KEY_ALL_ACCESS)
@@ -23,11 +30,17 @@ pub fn setup_registry() -> Result<()> {
         .context("Failed to create TasKat key")?;
     
     // Set the display name
-    TasKat_key.set_value("", &"TasKat Command")
+    TasKat_key.set_value("", &"TasKat")
         .context("Failed to set TasKat display name")?;
         
-    // Set the icon (optional - uses the executable's icon)
-    TasKat_key.set_value("Icon", &exe_path_str)
+    // Set the icon to use TasKat.ico if it exists, otherwise fall back to executable icon
+    let icon_to_use = if Path::new(&icon_path_str).exists() {
+        icon_path_str.clone()
+    } else {
+        exe_path_str.clone()
+    };
+    
+    TasKat_key.set_value("Icon", &icon_to_use)
         .context("Failed to set TasKat icon")?;
     
     // Create the command subkey
@@ -54,8 +67,8 @@ pub fn setup_registry() -> Result<()> {
     bg_TasKat_key.set_value("", &"TasKat Command")
         .context("Failed to set Directory\\Background TasKat display name")?;
         
-    // Set the icon
-    bg_TasKat_key.set_value("Icon", &exe_path_str)
+    // Set the icon to use TasKat.ico if it exists, otherwise fall back to executable icon
+    bg_TasKat_key.set_value("Icon", &icon_to_use)
         .context("Failed to set Directory\\Background TasKat icon")?;
     
     // Create the command subkey

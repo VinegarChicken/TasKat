@@ -127,6 +127,14 @@ CRITICAL PYTHON 3 COMPATIBILITY:
 
 CRITICAL UNICODE HANDLING:
 - Always handle Unicode characters in filenames properly
+- For file operations that modify or move files, use repr() to show the full path safely
+- For simple file listing operations, use .name attribute to show just the filename
+- When listing directory contents, prefer: print(path.name) over print(repr(path))
+- Example for file listing:
+  ```python
+  for item in Path('.').iterdir():
+      print(item.name)  # Shows just the filename
+  ```
 - Use repr() or ascii() when printing filenames to avoid encoding issues
 - Instead of: print(f"Moved '{{{{filename}}}}' to '{{{{destination}}}}'")
 - Use: print(f"Moved {{{{repr(filename)}}}} to {{{{repr(destination)}}}}")
@@ -140,8 +148,9 @@ FILE FORMAT REQUIREMENTS:
 CRITICAL: Do NOT use input() or any interactive prompts. The script must run completely autonomously.
 
 For file creation, use intelligent naming:
-- Use descriptive names based on the current request topic
-- Include timestamps to avoid conflicts: filename_YYYYMMDD_HHMMSS.ext
+- If user specifies a filename, use exactly that name
+- Only add timestamps if: (1) no filename is given by user, OR (2) the requested filename already exists
+- When adding timestamps for conflicts: filename_YYYYMMDD_HHMMSS.ext
 - Always check if files exist and handle conflicts automatically
 
 Example for text file creation:
@@ -153,13 +162,17 @@ from pathlib import Path
 # Change to target directory
 os.chdir(target_directory)
 
-# Create text file with substantial content
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = f"document_{{{{timestamp}}}}.txt"
+# Use user-specified filename or create descriptive name
+requested_filename = "user_specified_name.txt"  # Use actual user request
+filename = requested_filename
 
-# Check if file exists
+# Only add timestamp if file exists
 if Path(filename).exists():
-    print(f"File {{{{repr(filename)}}}} already exists. Creating with timestamp to avoid overwrite.")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    name_part = Path(filename).stem
+    ext_part = Path(filename).suffix
+    filename = f"{{name_part}}_{{timestamp}}{{ext_part}}"
+    print(f"File {{requested_filename}} already exists. Creating {{filename}} instead.")
 
 # Write content
 with open(filename, 'w', encoding='utf-8') as f:
@@ -167,7 +180,7 @@ with open(filename, 'w', encoding='utf-8') as f:
     f.write("This is the content of the document.\n")
     # Add more substantial content here
     
-print(f"Created: {{{{repr(filename)}}}}")
+print(f"Created: {{filename}}")
 ```
 
 {conversation_context}{error_context_str}

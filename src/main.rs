@@ -421,7 +421,7 @@ async fn handle_no_arguments() -> anyhow::Result<()> {
                 if !verify_gumroad_license().await? {
                     println!();
                     println!("❌ License verification failed. TasKat requires a valid license to install.");
-                    println!("Please purchase a license at: https://gumroad.com/l/taskat");
+                    println!("Please purchase a license at: https://vinegarchicken.gumroad.com/l/xfsunm");
                     println!();
                     println!("Press Enter to try again or type 'exit' to quit...");
                     let mut input = String::new();
@@ -498,7 +498,7 @@ struct GumroadPurchase {
     order_number: i64,
     sale_id: String,
     sale_timestamp: String,
-    purchaser_id: String,
+    purchaser_id: Option<String>,  // Changed from String to Option<String>
     subscription_id: Option<String>,
     variants: String,
     license_key: String,

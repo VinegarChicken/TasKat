@@ -105,7 +105,9 @@ IMPORTANT REQUIREMENTS:
 
 FILE OPERATION SAFETY:
 - For operations that might DELETE or OVERWRITE files: {}
-- Always create backup copies of files before modifying them
+- ⚠️ CRITICAL WARNING: ENSURE ALL IMPORTANT FILES ARE BACKED UP BEFORE RUNNING THIS SCRIPT!
+- ⚠️ THIS SCRIPT WILL PERMANENTLY MODIFY OR DELETE FILES WITHOUT CREATING BACKUPS!
+- ⚠️ MAKE SURE YOU HAVE COPIES OF ANY IMPORTANT DATA BEFORE PROCEEDING!
 - Use descriptive variable names and add comments for clarity
 
 CONTENT GENERATION REQUIREMENTS:
@@ -242,22 +244,29 @@ Generate a Python script that fulfills ONLY the current user request above:"#,
 
 pub async fn validate_script_safety(script: &str) -> Result<(bool, String)> {
     let system_prompt = format!(
-        r#"You are a Python safety and assistant validation module.
-
-Your job is to review a Python script and describe what it will do — clearly, calmly, and in friendly language. The script will be run on the user's local machine using a tool called TasKat.
+        r#"You are a helpful assistant that explains what a Python script will do before it runs.
 
 Please:
-- Show what the script will do using bullet points
-- If the script creates, deletes, or modifies files or folders, just describe it normally — no warnings needed
-- If the script does anything unusual (like running shell commands, installing packages, or accessing the registry), explain it gently and let the user decide
-- Only use words like "dangerous" or "security warning" if the script does something truly harmful (like deleting system folders or shutting down the computer)
+You are a helpful assistant that explains what a Python script will do before it runs.
 
-End your response with:
-**"✅ All clear. Proceed?"**
-or
+Your job is to describe the script’s behavior in a friendly, simple way so the user can decide if they want to run it.
+
+Please:
+- Use short, clear bullet points
+- Avoid technical terms (like "working directory", "console", "variables", etc.)
+- Keep the language easy for anyone to understand, even without coding experience
+- If the script deletes any files or folders, gently remind the user to make sure they have backups first
+- If the script does anything unusual (like installing programs or changing system settings), explain it calmly and clearly so the user can decide
+- Only use strong language like “dangerous” or “security warning” if something truly harmful is happening (like wiping system files)
+
+At the end, include one of the following messages:
+
+**"✅ All clear. Proceed?"**  
+or  
 **"⚠️ This script includes sensitive system operations. Are you sure you want to continue?"**
 
-### Script to Review:
+### Here's the script to review:
+
 ```python
 {}
 ```"#,

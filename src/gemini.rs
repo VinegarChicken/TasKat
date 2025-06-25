@@ -99,7 +99,7 @@ CRITICAL INSTRUCTION FOLLOWING:
 IMPORTANT REQUIREMENTS:
 1. Generate ONLY executable Python code - no explanations, no markdown formatting, no ```python blocks
 2. The script will be executed directly in the target folder
-3. DO NOT include os.chdir() or directory validation - TasKat handles directory changes automatically
+3. DO NOT include os.chdir() or directory validation - TasCat handles directory changes automatically
 4. DO NOT check if directories exist - assume you're already in the correct working directory
 5. Include proper error handling with try/catch blocks for file operations only
 6. NEVER use input() for user interaction - the script runs non-interactively

@@ -19,7 +19,7 @@ use commands::{CommandRegistry, get_config_path, is_command, extract_command_nam
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let matches = Command::new("TasKat")
+    let matches = Command::new("TasCat")
         .version("1.0")
         .about("AI-powered file operations via right-click context menu")
         .subcommand(
@@ -45,14 +45,14 @@ async fn main() -> anyhow::Result<()> {
     match matches.subcommand() {
         Some(("install", _)) => {
             setup_registry()?;
-            println!("{}", "✅ TasKat context menu installed! Right-click anywhere in File Explorer to use it. 
+            println!("{}", "✅ TasCat context menu installed! Right-click anywhere in File Explorer to use it. 
             Remember to install python 3 if you havent already !".green());
         }
         Some(("uninstall", _)) => {
             uninstall_registry()?;
-            println!("{}", "✅ TasKat context menu removed successfully.".green());
+            println!("{}", "✅ TasCat context menu removed successfully.".green());
             println!("{}", "If you ran into any issues or problems, be sure to contact the developer!".yellow());
-            println!("{}", "Thank you for using TasKat 🫡".blue());
+            println!("{}", "Thank you for using TasCat 🫡".blue());
         }
         Some(("prompt", sub_matches)) => {
             let folder_path = sub_matches.get_one::<String>("folder").unwrap();

@@ -1,10 +1,10 @@
-# TasKat
+# TasCat
 
 AI-powered file operations via Windows right-click context menu integration. Generate and execute Python scripts to process files and folders using natural language prompts.
 
 ## Features
 
-- **Right-click Integration**: Access TasKat directly from Windows File Explorer
+- **Right-click Integration**: Access TasCat directly from Windows File Explorer
 - **AI-Powered Script Generation**: Uses Google's Gemini AI to generate Python scripts
 - **Security-First Design**: Built-in security analysis and user approval for potentially dangerous operations
 - **Automatic Dependency Management**: Automatically installs required Python packages
@@ -14,7 +14,7 @@ AI-powered file operations via Windows right-click context menu integration. Gen
 ## Security Features
 
 ### Script Security Analysis
-TasKat analyzes generated scripts for potentially dangerous operations:
+TasCat analyzes generated scripts for potentially dangerous operations:
 
 - **Critical**: System command execution, dynamic code evaluation, file operations
 - **High Risk**: File/directory deletion, recursive operations
@@ -38,7 +38,7 @@ TasKat analyzes generated scripts for potentially dangerous operations:
 1. **Download and Build**:
    ```bash
    git clone <repository-url>
-   cd TasKat
+   cd TasCat
    cargo build --release
    ```
 
@@ -53,14 +53,14 @@ TasKat analyzes generated scripts for potentially dangerous operations:
 
 3. **Install Context Menu Integration**:
    ```bash
-   ./target/release/taskat.exe install
+   ./target/release/tascat.exe install
    ```
 
 ## Usage
 
 ### Via Context Menu
 1. Right-click on any folder in Windows File Explorer
-2. Select "TasKat Command"
+2. Select "TasCat Command"
 3. Enter your natural language prompt
 4. Review and approve any security warnings
 5. Watch as the AI generates and executes the appropriate script
@@ -68,16 +68,16 @@ TasKat analyzes generated scripts for potentially dangerous operations:
 ### Via Command Line
 ```bash
 # Process a specific folder
-taskat prompt "C:\path\to\folder"
-taskat install
-taskat uninstall
+tascat prompt "C:\path\to\folder"
+tascat install
+tascat uninstall
 
-- `RUST_LOG`: Logging level (default: `taskat=info`)
+- `RUST_LOG`: Logging level (default: `tascat=info`)
 
-Logs are written to stdout with timestamps. Set `RUST_LOG=taskat=debug` for verbose logging.
+Logs are written to stdout with timestamps. Set `RUST_LOG=tascat=debug` for verbose logging.
 
-set RUST_LOG=taskat=debug
-taskat prompt "C:\path\to\folder"
+set RUST_LOG=tascat=debug
+tascat prompt "C:\path\to\folder"
 ```
 
 ## Development

@@ -1,18 +1,18 @@
 [package]
-name = "TasKat"
+name = "TasCat"
 version = "0.1.0"
 edition = "2021"
 authors = ["Milo Auguste III"]
 
 [package.metadata.winres]
-OriginalFilename = "TasKat.exe"
+OriginalFilename = "TasCat.exe"
 LegalCopyright = "Copyright (c) Milo Auguste III"
-ProductName = "TasKat"
+ProductName = "TasCat"
 FileDescription = "AI-powered file operations via right-click context menu"
 ProductVersion = "0.1"
 FileVersion = "0.1"
 CompanyName = "Milo Auguste III"
-icon = "TasKat.ico"
+icon = "TasCat.ico"
 
 [dependencies]
 anyhow = "1.0"

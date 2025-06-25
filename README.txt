@@ -1,6 +1,6 @@
-Setup is required to run TasKat. You only need to do it once, and its quick. Please follow the steps below !
+Setup is required to run TasCat. You only need to do it once, and its quick. Please follow the steps below !
 
-Python 3 installed on your computer (required for TasKat to execute the AI-generated automation scripts).
+Python 3 installed on your computer (required for TasCat to execute the AI-generated automation scripts).
 Go to Google AI Studio: Open your web browser and navigate to aistudio.google.com.
 
 Sign In: Log in with your Google account. If it's your first time, you may need to accept the terms of service.
@@ -19,11 +19,11 @@ Copy Your Key: Your new Gemini API key will be generated and displayed. Immediat
 
 You can also watch this video to guide you https://youtu.be/o8iyrtQyrZM
 
-Run TasKat, and when prompted, paste in your license, and paste in your api key. Thats all ! You wont need to do it again, unless you uninstall
+Run TasCat, and when prompted, paste in your license, and paste in your api key. Thats all ! You wont need to do it again, unless you uninstall
 the app and choose the option to remove both the license and api key from your computer.
-Now right click, press show more options, then open TasKat and Enjoy !
+Now right click, press show more options, then open TasCat and Enjoy !
 
-For the quick command functionality, open TasKat and type "#help"
+For the quick command functionality, open TasCat and type "#help"
 
 If you need further help installing this, or you encounter any bugs then feel free to contact me at miloaugusteiii@outlook.com or vinegarchickenn@gmail.com.
-Thank you for downloading TasKat!
+Thank you for downloading TasCat!

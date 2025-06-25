@@ -1,6 +1,6 @@
 # Security Improvements Implementation
 
-This document outlines the immediate security improvements implemented for TasKat beta readiness.
+This document outlines the immediate security improvements implemented for TasCat beta readiness.
 
 ## Implemented Security Features
 
@@ -140,7 +140,7 @@ To test the security improvements:
 2. **Set up environment**:
    ```bash
    set GEMINI_API_KEY=your-api-key
-   set RUST_LOG=taskat=debug
+   set RUST_LOG=tascat=debug
    ```
 
 3. **Test with a dangerous prompt**:

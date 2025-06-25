@@ -12,43 +12,43 @@ pub fn setup_registry() -> Result<()> {
         .context("Failed to get current executable path")?;
     let exe_path_str = exe_path.to_string_lossy().to_string();
     
-    // Get the icon path (TasKat.ico in the same directory as the executable)
+    // Get the icon path (TasCat.ico in the same directory as the executable)
     let exe_dir = exe_path.parent()
         .context("Failed to get executable directory")?;
-    let icon_path = exe_dir.join("TasKat.ico");
+    let icon_path = exe_dir.join("TasCat.ico");
     let icon_path_str = icon_path.to_string_lossy().to_string();
     
-    // Create the registry path for Directory context menu: HKEY_CLASSES_ROOT\Directory\shell\TasKat
+    // Create the registry path for Directory context menu: HKEY_CLASSES_ROOT\Directory\shell\TasCat
     let directory_key = hkcr.open_subkey_with_flags("Directory", KEY_ALL_ACCESS)
         .context("Failed to open Directory key")?;
     
     let shell_key = directory_key.open_subkey_with_flags("shell", KEY_ALL_ACCESS)
         .context("Failed to open shell key")?;
     
-    // Create or open TasKat key for directories
-    let (TasKat_key, _) = shell_key.create_subkey("TasKat")
-        .context("Failed to create TasKat key")?;
+    // Create or open TasCat key for directories
+    let (TasCat_key, _) = shell_key.create_subkey("TasCat")
+        .context("Failed to create TasCat key")?;
     
     // Set the display name
-    TasKat_key.set_value("", &"TasKat")
-        .context("Failed to set TasKat display name")?;
+    TasCat_key.set_value("", &"TasCat")
+        .context("Failed to set TasCat display name")?;
         
-    // Set the icon to use TasKat.ico if it exists, otherwise fall back to executable icon
+    // Set the icon to use TasCat.ico if it exists, otherwise fall back to executable icon
     let icon_to_use = if Path::new(&icon_path_str).exists() {
         icon_path_str.clone()
     } else {
         exe_path_str.clone()
     };
     
-    TasKat_key.set_value("Icon", &icon_to_use)
-        .context("Failed to set TasKat icon")?;
+    TasCat_key.set_value("Icon", &icon_to_use)
+        .context("Failed to set TasCat icon")?;
     //Make 100 jpg, 100 png, 100 txt, 100 pdf, 100 docx, 100 mp3, 100 ogg, and make each one have a random, unique filename that doesnt follow a specific pattern or have a similar name
     // Create the command subkey
-    let (command_key, _) = TasKat_key.create_subkey("command")
+    let (command_key, _) = TasCat_key.create_subkey("command")
         .context("Failed to create command key")?;
     
     // Set the command value with the full path to the executable
-    // Remove the cd /d command since TasKat handles directory changes internally
+    // Remove the cd /d command since TasCat handles directory changes internally
     let command_value = format!("\"{}\" prompt \"%1\"", exe_path_str);
     command_key.set_value("", &command_value)
         .context("Failed to set command value")?;
@@ -60,24 +60,24 @@ pub fn setup_registry() -> Result<()> {
     let bg_shell_key = directory_background_key.open_subkey_with_flags("shell", KEY_ALL_ACCESS)
         .context("Failed to open Directory\\Background\\shell key")?;
     
-    // Create or open TasKat key for background
-    let (bg_TasKat_key, _) = bg_shell_key.create_subkey("TasKat")
-        .context("Failed to create Directory\\Background TasKat key")?;
+    // Create or open TasCat key for background
+    let (bg_TasCat_key, _) = bg_shell_key.create_subkey("TasCat")
+        .context("Failed to create Directory\\Background TasCat key")?;
     
     // Set the display name
-    bg_TasKat_key.set_value("", &"TasKat")
-        .context("Failed to set Directory\\Background TasKat display name")?;
+    bg_TasCat_key.set_value("", &"TasCat")
+        .context("Failed to set Directory\\Background TasCat display name")?;
         
-    // Set the icon to use TasKat.ico if it exists, otherwise fall back to executable icon
-    bg_TasKat_key.set_value("Icon", &icon_to_use)
-        .context("Failed to set Directory\\Background TasKat icon")?;
+    // Set the icon to use TasCat.ico if it exists, otherwise fall back to executable icon
+    bg_TasCat_key.set_value("Icon", &icon_to_use)
+        .context("Failed to set Directory\\Background TasCat icon")?;
     
     // Create the command subkey
-    let (bg_command_key, _) = bg_TasKat_key.create_subkey("command")
+    let (bg_command_key, _) = bg_TasCat_key.create_subkey("command")
         .context("Failed to create Directory\\Background command key")?;
     
     // Set the command value - %V gives the current directory
-    // Remove the cd /d command since TasKat handles directory changes internally
+    // Remove the cd /d command since TasCat handles directory changes internally
     let bg_command_value = format!("\"{}\" prompt \"%V\"", exe_path_str);
     bg_command_key.set_value("", &bg_command_value)
         .context("Failed to set Directory\\Background command value")?;
@@ -95,9 +95,9 @@ pub fn uninstall_registry() -> Result<()> {
     let shell_key = directory_key.open_subkey_with_flags("shell", KEY_ALL_ACCESS)
         .context("Failed to open shell key")?;
     
-    // Delete the TasKat key and all its subkeys
-    if let Err(_) = shell_key.delete_subkey_all("TasKat") {
-        println!("Note: Directory\\shell\\TasKat key not found or already removed");
+    // Delete the TasCat key and all its subkeys
+    if let Err(_) = shell_key.delete_subkey_all("TasCat") {
+        println!("Note: Directory\\shell\\TasCat key not found or already removed");
     }
 
     // Remove from Directory\Background\shell
@@ -107,9 +107,9 @@ pub fn uninstall_registry() -> Result<()> {
     let bg_shell_key = directory_background_key.open_subkey_with_flags("shell", KEY_ALL_ACCESS)
         .context("Failed to open Directory\\Background\\shell key")?;
     
-    // Delete the TasKat key and all its subkeys
-    if let Err(_) = bg_shell_key.delete_subkey_all("TasKat") {
-        println!("Note: Directory\\Background\\shell\\TasKat key not found or already removed");
+    // Delete the TasCat key and all its subkeys
+    if let Err(_) = bg_shell_key.delete_subkey_all("TasCat") {
+        println!("Note: Directory\\Background\\shell\\TasCat key not found or already removed");
     }
     
     Ok(())
@@ -118,10 +118,10 @@ pub fn uninstall_registry() -> Result<()> {
 pub fn is_installed() -> bool {
     let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
     
-    // Check if the TasKat key exists in Directory\shell
+    // Check if the TasCat key exists in Directory\shell
     if let Ok(directory_key) = hkcr.open_subkey_with_flags("Directory", KEY_READ) {
         if let Ok(shell_key) = directory_key.open_subkey_with_flags("shell", KEY_READ) {
-            if shell_key.open_subkey("TasKat").is_ok() {
+            if shell_key.open_subkey("TasCat").is_ok() {
                 return true;
             }
         }

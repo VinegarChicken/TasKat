@@ -121,9 +121,14 @@ try:
         print(f"🔄 Changing to drive: {{target_path.drive}}")
         os.chdir(target_path.drive + os.sep)
     
-    os.chdir(target_dir)
+    # Check if we're already in the target directory
     current_dir = os.getcwd()
-    print(f"✅ Successfully changed to: {{current_dir}}")
+    if os.path.normpath(current_dir) == os.path.normpath(target_dir):
+        print(f"✅ Already in target directory: {{current_dir}}")
+    else:
+        os.chdir(target_dir)
+        current_dir = os.getcwd()
+        print(f"✅ Successfully changed to: {{current_dir}}")
 except Exception as e:
     print(f"❌ Error changing to directory: {{e}}")
     print(f"🔍 Current directory: {{os.getcwd()}}")

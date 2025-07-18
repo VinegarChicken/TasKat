@@ -1,0 +1,67 @@
+name = "resize"
+description = "Resize images in a directory"
+version = "1.0.0"
+author = "TasCat Community"
+tags = ["images", "resize", "batch"]
+examples = [
+    "#resize width=800 height=600",
+    "#resize width=1920 format=jpg"
+]
+
+[[parameters]]
+name = "width"
+description = "Target width in pixels"
+param_type = "number"
+required = true
+
+[[parameters]]
+name = "height"
+description = "Target height in pixels (optional, maintains aspect ratio if not specified)"
+param_type = "number"
+required = false
+
+[[parameters]]
+name = "format"
+description = "Output format (jpg, png, webp)"
+param_type = "string"
+required = false
+default_value = "jpg"
+
+script_template = """
+from PIL import Image
+import os
+import glob
+
+width = {{width}}
+height = {{height}} if '{{height}}' else None
+output_format = '{{format}}'
+
+image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.tiff']
+image_files = []
+
+for ext in image_extensions:
+    image_files.extend(glob.glob(ext, recursive=True))
+    image_files.extend(glob.glob(ext.upper(), recursive=True))
+
+print(f"Found {len(image_files)} images to resize")
+
+for img_path in image_files:
+    try:
+        with Image.open(img_path) as img:
+            if height:
+                resized = img.resize((width, height), Image.Resampling.LANCZOS)
+            else:
+                # Maintain aspect ratio
+                img.thumbnail((width, width), Image.Resampling.LANCZOS)
+                resized = img
+            
+            # Save with new format if specified
+            base_name = os.path.splitext(img_path)[0]
+            output_path = f"{base_name}_resized.{output_format}"
+            resized.save(output_path, format=output_format.upper())
+            print(f"✅ Resized: {img_path} -> {output_path}")
+    except Exception as e:
+        print(f"❌ Error processing {img_path}: {e}")
+
+print("Resize operation completed!")
+"""

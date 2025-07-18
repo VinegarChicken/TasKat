@@ -1,0 +1,14 @@
+[providers]
+# Primary providers
+gemini = { api_key_env = "GEMINI_API_KEY", base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent", enabled = true }
+claude = { api_key_env = "ANTHROPIC_API_KEY", base_url = "https://api.anthropic.com/v1/messages", enabled = false }
+openai = { api_key_env = "OPENAI_API_KEY", base_url = "https://api.openai.com/v1/chat/completions", enabled = false }
+
+# Local fallback
+ollama = { base_url = "http://localhost:11434/api/generate", model = "codellama", enabled = true }
+
+[routing]
+default_provider = "gemini"
+fallback_order = ["claude", "openai", "ollama"]
+max_retries = 3
+cache_responses = true

@@ -9,13 +9,19 @@ mod context;
 mod gemini;
 mod registry;
 mod runner;
-mod commands; // Add the new module
+mod commands;
+mod sandbox;  // Add new modules
+mod rollback;
+mod plugins;
 
 use context::gather_file_context;
 use gemini::{generate_python_script, fix_python_script};
 use registry::{setup_registry, uninstall_registry, is_installed};
 use runner::{execute_python_script, is_recoverable_error, extract_error_details};
 use commands::{CommandRegistry, get_config_path, is_command, extract_command_name, display_help};
+use sandbox::execute_dry_run;
+use rollback::{RollbackManager, execute_with_rollback};
+use plugins::PluginManager;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -67,11 +73,16 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-// Updated conversation history management in main.rs
-// Updated run_prompt_mode function to ask for permission preference
+
+
+// In run_prompt_mode function
 async fn run_prompt_mode(folder_path: &str) -> anyhow::Result<()> {
     let path = Path::new(folder_path);
+     let mut rollback_manager = rollback::RollbackManager::new()?;
+    let plugin_manager = plugins::PluginManager::new()?;
     
+    // Enhanced prompt processing with new features
+
     // Add more detailed path validation with better error messages
     if !path.exists() {
         println!("{}", format!("❌ Folder path does not exist: {}", folder_path).red());
@@ -141,7 +152,31 @@ async fn run_prompt_mode(folder_path: &str) -> anyhow::Result<()> {
         if prompt.eq_ignore_ascii_case("exit") || prompt.eq_ignore_ascii_case("quit") {
             break;
         }
+        if prompt.starts_with("#") {
+    // Check if it's a plugin command
+    if let Some(plugin_result) = plugin_manager.handle_command(prompt)? {
+        // Execute plugin with sandbox and rollback
+        let snapshot_id = rollback_manager.create_snapshot(folder_path)?;
         
+        if ask_permission {
+            // Show dry-run preview
+            let dry_run = execute_dry_run(&plugin_result, folder_path).await?;
+            println!("{}", dry_run.format_preview());
+            
+            print!("Apply these changes? (yes/y/no/n): ");
+            // ... confirmation logic ...
+        }
+        
+        // Execute with rollback capability
+        match execute_with_rollback(&plugin_result, folder_path, &snapshot_id).await {
+            Ok(_) => println!("✅ Plugin executed successfully"),
+            Err(e) => {
+                println!("❌ Plugin failed: {}", e);
+                rollback_manager.rollback(&snapshot_id)?;
+            }
+        }
+    }
+}
         // Handle commands
         if is_command(prompt) {
             let command_name = extract_command_name(prompt);
@@ -149,6 +184,72 @@ async fn run_prompt_mode(folder_path: &str) -> anyhow::Result<()> {
             // Handle built-in commands
             if command_name.eq_ignore_ascii_case("help") {
                 println!("{}", display_help());
+                continue;
+            } else if command_name.eq_ignore_ascii_case("undo") {
+                println!("{}", "🔄 Available snapshots for rollback...".blue());
+                
+                let snapshots = rollback_manager.list_snapshots(folder_path);
+                
+                if snapshots.is_empty() {
+                    println!("{}", "❌ No snapshots found for this folder.".red());
+                    println!("{}", "💡 Tip: Snapshots are only created for plugin commands (starting with #) or when manually requested.".yellow());
+                    continue;
+                }
+                
+                // Display available snapshots
+                println!("{}", "Available snapshots:".green());
+                for (index, snapshot) in snapshots.iter().enumerate() {
+                    println!("{}. {} - {} (ID: {})", 
+                             (index + 1).to_string().cyan(),
+                             snapshot.timestamp.format("%Y-%m-%d %H:%M:%S").to_string().yellow(),
+                             snapshot.original_path.display().to_string().blue(),
+                             snapshot.id[..8].to_string().dimmed());
+                }
+                
+                // Ask user to select a snapshot
+                print!("{}", "Enter the number of the snapshot to rollback to (or 'cancel' to abort): ".green());
+                io::stdout().flush()?;
+                let mut selection_input = String::new();
+                io::stdin().read_line(&mut selection_input)?;
+                let selection = selection_input.trim();
+                
+                if selection.eq_ignore_ascii_case("cancel") {
+                    println!("{}", "Rollback cancelled.".blue());
+                    continue;
+                }
+                
+                match selection.parse::<usize>() {
+                    Ok(num) if num > 0 && num <= snapshots.len() => {
+                        let selected_snapshot = &snapshots[num - 1];
+                        
+                        // Confirm the rollback
+                        println!("{} {}", "You selected snapshot from:".yellow(), 
+                                 selected_snapshot.timestamp.format("%Y-%m-%d %H:%M:%S").to_string().cyan());
+                        print!("{}", "Are you sure you want to rollback to this snapshot? (yes/y/no/n): ".red());
+                        io::stdout().flush()?;
+                        let mut confirm_input = String::new();
+                        io::stdin().read_line(&mut confirm_input)?;
+                        let confirmed = confirm_input.trim().eq_ignore_ascii_case("yes") || confirm_input.trim().eq_ignore_ascii_case("y");
+                        
+                        if confirmed {
+                            match rollback_manager.rollback_to_snapshot(&selected_snapshot.id) {
+                                Ok(()) => {
+                                    println!("{}", "✅ Rollback completed successfully!".green());
+                                    conversation_history.push(format!("UNDO: Rolled back to snapshot from {}", 
+                                                                     selected_snapshot.timestamp.format("%Y-%m-%d %H:%M:%S")));
+                                },
+                                Err(e) => {
+                                    println!("{} {}", "❌ Rollback failed:".red(), e);
+                                }
+                            }
+                        } else {
+                            println!("{}", "Rollback cancelled.".blue());
+                        }
+                    },
+                    _ => {
+                        println!("{}", "❌ Invalid selection. Please enter a valid number.".red());
+                    }
+                }
                 continue;
             } else if command_name.eq_ignore_ascii_case("save") {
                 if last_script.is_empty() {
@@ -239,6 +340,42 @@ async fn run_prompt_mode(folder_path: &str) -> anyhow::Result<()> {
         if conversation_history.len() > MAX_HISTORY_ENTRIES {
             conversation_history.drain(0..2); // Remove oldest entries (request + response pair)
         }
+
+        // Ask user if they want to continue
+        print!("{}", "Do you want to continue with this operation? (yes/y/no/n): ".yellow());
+        io::stdout().flush()?;
+        let mut continue_input = String::new();
+        io::stdin().read_line(&mut continue_input)?;
+        let should_continue = continue_input.trim().eq_ignore_ascii_case("yes") || continue_input.trim().eq_ignore_ascii_case("y");
+        
+        if !should_continue {
+            println!("{}", "Operation cancelled by user.".blue());
+            continue;
+        }
+        
+        // Ask user if they want to create a snapshot first
+        print!("{}", "Make a snapshot for the folder first? (yes/y/no/n): ".yellow());
+        io::stdout().flush()?;
+        let mut snapshot_input = String::new();
+        io::stdin().read_line(&mut snapshot_input)?;
+        let create_snapshot = snapshot_input.trim().eq_ignore_ascii_case("yes") || snapshot_input.trim().eq_ignore_ascii_case("y");
+        
+        let snapshot_id = if create_snapshot {
+            println!("{}", "📸 Creating snapshot...".blue());
+            match rollback_manager.create_snapshot(folder_path) {
+                Ok(id) => {
+                    println!("{} Snapshot created with ID: {}", "✅".green(), id.cyan());
+                    Some(id)
+                },
+                Err(e) => {
+                    println!("{} Failed to create snapshot: {}", "⚠️".yellow(), e);
+                    println!("{}", "Continuing without snapshot...".yellow());
+                    None
+                }
+            }
+        } else {
+            None
+        };
 
         // Gather file context fresh each time
         println!("{}", "📁 Analyzing folder structure...".blue());
@@ -389,7 +526,7 @@ async fn handle_no_arguments() -> anyhow::Result<()> {
             // Ask about license removal
             println!();
             print!("Would you like to remove your saved license key from this computer as well? (yes/y/no/n): ");
-            io::stdout().flush()?;
+            io::stdout().flush();
             
             let mut license_response = String::new();
             io::stdin().read_line(&mut license_response)?;
@@ -839,4 +976,6 @@ fn remove_gemini_api_key() -> anyhow::Result<()> {
         }
     }
 }
+
+
 

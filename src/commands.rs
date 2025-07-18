@@ -5,6 +5,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use chrono::Local;
 use anyhow::{Result, Context};
+use colored::Colorize;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Command {
@@ -114,22 +115,50 @@ pub fn extract_command_name(input: &str) -> &str {
 }
 
 pub fn display_help() -> String {
-    r##"PromptFile Command System Help:
-    
-#help - Display this help message
+    format!(
+        r#"{}
+{}
 
-Creating Commands:
+{}
+  {} - Show this help message
+  {} - Save the last generated script as a reusable command
+  {} - Undo the last operation (rollback to most recent snapshot)
+  {} - List all available commands
+
+{}
+  Example: {} "Create a backup of all .txt files"
+  Example: {} "Organize photos by date"
+
+{}
 1. Type your prompt and get a response
-2. Type #save to save the last prompt as a command
+2. Type {} to save the last prompt as a command
 3. You'll be asked for a command name and optional description
 
-Using Commands:
-- Type #commandname to execute a saved command
+{}
+- Type {} to execute a saved command
 - Commands are saved in Desktop/PromptFile/config.json
 
-Examples:
+{}
 - "Create a file that lists all files in the current directory" (regular prompt)
-- "#save" (save the previous prompt as a command)
-- "#listfiles" (execute the saved command)
-"##.to_string()
+- "{}" (save the previous prompt as a command)
+- "{}" (execute the saved command)
+"#,
+        "📋 TasCat Help".cyan().bold(),
+        "==============".cyan(),
+        "Built-in Commands:".green().bold(),
+        "#help".cyan(),
+        "#save".cyan(),
+        "#undo".cyan(),
+        "#list".cyan(),
+        "Usage:".green().bold(),
+        "tascat".yellow(),
+        "tascat \"prompt\"".yellow(),
+        "Creating Commands:".green().bold(),
+        "#save".cyan(),
+        "Using Commands:".green().bold(),
+        "#commandname".cyan(),
+        "Examples:".green().bold(),
+        "#save".cyan(),
+        "#listfiles".cyan()
+    )
 }

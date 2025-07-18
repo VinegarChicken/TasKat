@@ -7,7 +7,9 @@ use regex::Regex;
 use std::collections::HashSet;
 use crate::gemini::validate_script_safety;
 use colored::*;  // Add this import at the top
-
+use crate::sandbox::DryRunResult;
+use crate::sandbox::*;
+use std::path::Path;
 pub struct ExecutionResult {
     pub success: bool,
     pub output: String,
@@ -386,4 +388,75 @@ pub fn extract_error_details(error: &str) -> String {
     } else {
         error.to_string()
     }
+}
+
+// Add new function for dry-run execution
+pub async fn execute_dry_run(script: &str, folder_path: &str) -> Result<DryRunResult> {
+    // Create temporary sandbox directory
+    let temp_dir = tempfile::tempdir()?;
+    let sandbox_path = temp_dir.path();
+    
+    // Copy folder structure to sandbox
+    copy_directory_structure(folder_path, sandbox_path)?;
+    
+    // Execute script in sandbox
+    let result = execute_python_script_in_sandbox(script, sandbox_path).await?;
+    
+    // Generate diff between original and sandbox
+    let diff = generate_git_style_diff(Path::new(folder_path), sandbox_path)?;
+    
+    Ok(DryRunResult {
+        diff,
+        would_create: result.created_files,
+        would_modify: result.modified_files,
+        would_delete: result.deleted_files,
+    })
+}
+
+fn generate_git_style_diff(original: &Path, modified: &Path) -> Result<String> {
+    let mut diff = String::new();
+    
+    // Simple diff implementation - in production you'd want to use a proper diff library
+    diff.push_str(&format!("diff --git a/{} b/{}\n", original.display(), modified.display()));
+    diff.push_str(&format!("--- a/{}\n", original.display()));
+    diff.push_str(&format!("+++ b/{}\n", modified.display()));
+    
+    // Compare directories and generate diff
+    let changes = compare_directories(original, modified)?;
+    
+    for file in &changes.created_files {
+        diff.push_str(&format!("\x1b[32m+ Created: {}\x1b[0m\n", file.display())); // Green
+    }
+    
+    for file in &changes.modified_files {
+        diff.push_str(&format!("\x1b[33m~ Modified: {}\x1b[0m\n", file.display())); // Yellow
+    }
+    
+    for file in &changes.deleted_files {
+        diff.push_str(&format!("\x1b[31m- Deleted: {}\x1b[0m\n", file.display())); // Red
+    }
+    
+    Ok(diff)
+}
+
+// Add these functions before the generate_git_style_diff function
+
+fn copy_directory_structure(src: &str, dst: &Path) -> Result<()> {
+    crate::sandbox::copy_directory_structure(src, dst.to_str().unwrap())
+}
+
+async fn execute_python_script_in_sandbox(script: &str, sandbox_path: &Path) -> Result<ChangePreview> {
+    // Execute script in sandbox and return what changed
+    let _result = execute_python_script(script, sandbox_path.to_str().unwrap(), false).await?;
+    
+    // For now, return empty changes - you'd implement proper change detection here
+    Ok(ChangePreview {
+        created_files: Vec::new(),
+        modified_files: Vec::new(),
+        deleted_files: Vec::new(),
+    })
+}
+
+fn compare_directories(original: &Path, modified: &Path) -> Result<ChangePreview> {
+    crate::sandbox::compare_directories(original, modified)
 }
